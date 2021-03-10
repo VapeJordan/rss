@@ -23,7 +23,7 @@ setup(
 
     # This is for getting through appveyor, install tensorflow_gpu if you can.
     install_requires=["numpy==1.19.5", "ebcdic", "ibm2ieee", "tqdm",
-                      "notebook", 'matplotlib==3.3.3', 'numcodecs',
+                      "notebook", 'matplotlib==3.3.3', 'numcodecs', 's3fs',
                       "zarr"],  
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"

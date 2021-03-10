@@ -3,6 +3,7 @@ from glob import glob
 import json
 import numpy as np
 import os
+import s3f3
 import tqdm
 import zarr
 
@@ -66,16 +67,18 @@ class ZArrFromFile():
         return load_crossline(self.seismic, self.scalers, self.bounds, line_number)
 
 class ZArrFromS3():
-    def __init__(self, filename):
-        self.seismic = zarr.open_array(f'simplecache::s3://gsh-competition-data/poseidon/seismic/rss/{filename}/seismic.zarr',
-                                       storage_options={"s3": {'anon': True}},
-                                       mode='r')
-        self.scalers = np.load(f'{filename}/scalers.npy')
-        with open(f'{filename}/offset.json', 'r') as fp:
-            self.offsets = json.loads(fp.read())        
-            
+    def __init__(self, filename, client_kwargs):
+        s3 = s3fs.S3FileSystem(client_kwargs=client_kwargs)
+        store = s3fs.S3Map(root=filename, s3=s3, check=False)
+        cache = zarr.LRUStoreCache(store, max_size=2**28)
+        root = zarr.open(cache, mode='r')
+
+        self.seismic = root["seismic"]
+        self.scalers = root["scalers"]
+        self.bounds = root["bounds"]
+           
     def inline(self, line_number):
-        return load_inline(self.seismic, self.scalers, self.offsets, line_number)
+        return load_inline(self.seismic, self.scalers, self.bounds, line_number)
 
     def crossline(self, line_number):
-        return load_crossline(self.seismic, self.scalers, self.offsets, line_number)
+        return load_crossline(self.seismic, self.scalers, self.bounds, line_number)
