@@ -73,12 +73,17 @@ class ZArrFromS3():
         cache = zarr.LRUStoreCache(store, max_size=2**28)
         root = zarr.open(cache, mode='r')
 
-        self.seismic = root["seismic"]
-        self.scalers = root["scalers"]
-        self.bounds = root["bounds"]
+        self.root = root
+        self.bounds = self.root["bounds"]
            
-    def inline(self, line_number):
-        return load_inline(self.seismic, self.scalers, self.bounds, line_number)
+    def line(self, line_number, sort_order='inline'):
+        sort_order = sort_order.lower()
+        if(sort_order not in ('inline', 'crossline')):
+        raise RuntimeError(
+            f'{sort_order} not supported, sort order should be on of inline or crossline.')        
 
-    def crossline(self, line_number):
-        return load_crossline(self.seismic, self.scalers, self.bounds, line_number)
+        root = self.root[sort_order]
+        seismic = root["seismic"]
+        scalers = root["scalers"]
+
+        return load_inline(seismic, scalers, self.bounds, line_number)

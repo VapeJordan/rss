@@ -25,6 +25,8 @@ if __name__ == "__main__":
     parser.add_argument('--override_scalco', nargs='?', type=int,
                         help='overrider coords scalar.')
 
+    parser.add_argument('--sort_order', nargs='?', type=str, default='inline',
+                        help='sort order of zarr.')
     
     args = parser.parse_args()
 
@@ -46,7 +48,7 @@ if __name__ == "__main__":
     byte_locations['crossline'] = to_bytes(args.crossline)
     byte_locations['cdpx'] = to_bytes(args.cdpx)
     byte_locations['cdpy'] = to_bytes(args.cdpy)
-        
+ 
     ebcdic = parse_ebcdic(args.segy_file)
     print (ebcdic)
     
@@ -58,10 +60,11 @@ if __name__ == "__main__":
 
     read_trace_data(args.segy_file,
                     binary_header,
+                    sort_order=args.sort_order,
                     scalco=args.override_scalco,
                     byte_locations=byte_locations)
-    
-    compressed_zarr(args.segy_file)
+
+    compressed_zarr(args.segy_file, sort_order=args.sort_order)
    
     #path = os.path.splitext(os.path.basename(args.segy_file))[0]    
-    #shutil.rmtree(os.path.join(path, 'inlines'))
+    #shutil.rmtree(os.path.join(path, '{sort_order}s'))
