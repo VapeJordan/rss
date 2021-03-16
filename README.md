@@ -64,7 +64,7 @@ in a dictionary.
 client_kwargs = {'aws_access_key_id':'XYZ.....', 'aws_secret_access_key':'ABC.....'}\
 rss = rssFromS3(object-uri, client_kwargs=client_kwargs)
 
-## Usage - Access data from AWS S3
+## Usage - Ingesting SEGY data to rss
 
 The ingestion script will need you to configure byte locations, typically you can read these
 from the ebcdic header in the file, options are:
