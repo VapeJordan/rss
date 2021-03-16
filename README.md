@@ -81,6 +81,7 @@ Finally, the layout is optimized for sort order, specify this as one of inline o
 --sort_order='inline'
 
 python ingestion.py psdn11_TbsdmF_full_w_AGC_Nov11.segy --inline='5-8' --crossline='21-24' --override_scalco=100  --sort_order='inline'
+
 python ingestion.py psdn11_TbsdmF_full_w_AGC_Nov11.segy --inline='5-8' --crossline='21-24' --override_scalco=100  --sort_order='crossline'
 
 Warning: Ingestion of large data can be time consuming, this volume takes 1 hour to complete ingestion.
