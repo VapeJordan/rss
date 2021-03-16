@@ -39,32 +39,55 @@ class ZArrFromFile():
     def __init__(self, filename):
         store = zarr.DirectoryStore(f'{filename}')
         root = zarr.open(store, mode='r')
-        
-        self.seismic = root["seismic"]
-        self.scalers = root["scalers"]
-        self.bounds = root["bounds"]
             
     def line(self, line_number, sort_order='inline'):
         raise NotImplementedError()
 
+    def query_by_xy(self, xy, k=4):
+        raise NotImplementedError()
+
 class ZArrFromS3():
-    def __init__(self, filename, client_kwargs):
+    def __init__(self, filename, client_kwargs, cache_size=256*(1024**2)):
         s3 = s3fs.S3FileSystem(client_kwargs=client_kwargs)
         store = s3fs.S3Map(root=filename, s3=s3, check=False)
-        cache = zarr.LRUStoreCache(store, max_size=2**28)
-        root = zarr.open(cache, mode='r')
 
-        self.root = root
-        self.bounds = self.root["bounds"]
+        # don't cache meta-data read once
+        root = zarr.open(store, mode='r')
+        
+        cache = zarr.LRUStoreCache(store, max_size=cache_size)
+        inline_root = zarr.open(cache, mode='r')
+        self.inline_root = inline_root["inline"]
 
+        cache = zarr.LRUStoreCache(store, max_size=cache_size)
+        crossline_root = zarr.open(cache, mode='r')
+        self.crossline_root = crossline_root["crossline"]
+        
+        self.bounds = root["bounds"]
+
+        self.ilxl = np.vstack([root['coords']['inlines'][:],
+                               root['coords']['crosslines'][:]]).T
+        
+        self.xy = np.vstack([root['coords']['cdpx'][:],
+                             root['coords']['cdpy'][:]]).T
+        
+        self.kdtree = KDTree(data=self.xy)
+
+    def query_by_xy(self, xy, k=4):
+        dist, index = self.kdtree.query(np.atleast_2d(xy), k=k)
+        ilxl = [self.ilxl[i,:] for i in index]
+        return dist, ilxl
+        
     def line(self, line_number, sort_order='inline'):
         sort_order = sort_order.lower()
         if(sort_order not in ('inline', 'crossline')):
             raise RuntimeError(
                 f'{sort_order} not supported, sort order should be on of inline or crossline.')
 
-        root = self.root[sort_order]
-        seismic = root["seismic"]
-        scalers = root["scalers"]
-
+        if(sort_order == "inline"):
+            seismic = self.inline_root["seismic"]
+            scalers = self.inline_root["scalers"]
+        else:
+            seismic = self.crossline_root["seismic"]
+            scalers = self.crossline_root["scalers"]
+                    
         return load_line(seismic, scalers, self.bounds, line_number, sort_order=sort_order)
