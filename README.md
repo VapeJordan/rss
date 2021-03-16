@@ -72,13 +72,13 @@ from the ebcdic header in the file, options are:
 --inline\
 --crossline\
 --cdpx\
---cdpy\
+--cdpy
 
 You can also force the "scalar to be applied to all coordinates" to a constant value.\
 --override_scalco
 
-Finally, the layout is optimized for sort order, specify this as one of inline or crossline.
---sort_order='inline'
+Finally, the layout is optimized for sort order, specify this as one of inline or crossline.\
+--sort_order
 
 python ingestion.py psdn11_TbsdmF_full_w_AGC_Nov11.segy --inline='5-8' --crossline='21-24' --override_scalco=100  --sort_order='inline'
 
