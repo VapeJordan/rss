@@ -62,7 +62,7 @@ class rssFromFile():
         raise NotImplementedError()
 
 class rssFromS3():
-    def __init__(self, filename, client_kwargs=client_kwargs, cache_size=256*(1024**2)):
+    def __init__(self, filename, client_kwargs=None, cache_size=256*(1024**2)):
         """
         An object for accessing rss data from s3 blob storage.
         
@@ -73,8 +73,9 @@ class rssFromS3():
                         If this variable is none, anonymous access is assumed.
         cache_size : max size of the LRU cache.
         """
+        anon = client_kwargs is None
         
-        s3 = s3fs.S3FileSystem(client_kwargs=client_kwargs)
+        s3 = s3fs.S3FileSystem(anon=anon, client_kwargs=client_kwargs)
         store = s3fs.S3Map(root=filename, s3=s3, check=False)
 
         # don't cache meta-data read once
