@@ -9,6 +9,25 @@ import zarr
 
 
 def load_line(seismic, scalers, bounds, line_number, mask_val=np.nan, sort_order='inline'):
+    """
+    Loads a line from the input seismic array and resizes it to a standardized size, with 
+    constant padding. 
+    
+    Parameters
+    ----------
+    seismic : array like object containing sort order. 
+    scalers : array like object containing dynamic range of the line. 
+    bounds : dict containing min/max values for the inline/crossline coords.
+    line_number : int, the line number to access.
+    mask_val : scalar, a value to use in padding. 
+    sort_order : str, the sort order of the seismic array input.
+    
+    Returns
+    -------
+    traces : 2-D float array containing the trace data for the specified line.
+    mask : 2-D boolean array, False value indicated data that has been added by padding.
+    """
+    
     sort_order = sort_order.lower()
     if(sort_order not in ('inline', 'crossline')):
         raise RuntimeError(
