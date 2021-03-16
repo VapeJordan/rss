@@ -142,6 +142,9 @@ def read_trace_data(segy_file,
     inlines = np.zeros(binary_header['num_traces'], dtype=int)
     crosslines = np.zeros(binary_header['num_traces'], dtype=int)
 
+    cdpx = np.zeros(binary_header['num_traces'], dtype=int)
+    cdpy = np.zeros(binary_header['num_traces'], dtype=int)
+
     with open(segy_file, 'rb') as fp:  
         fp.seek(3600)
         for trac in tqdm.tqdm(range(0, binary_header['num_traces'])):
@@ -163,8 +166,15 @@ def read_trace_data(segy_file,
             inlines[trac] = hdr['inline']
             crosslines[trac] = hdr['crossline']
 
+            cdpx[trac] = hdr['cdpx']
+            cdpy[trac] = hdr['cdpy']
+
+
     np.save(os.path.join(filename, 'inlines.npy'), inlines)
     np.save(os.path.join(filename, 'crosslines.npy'), crosslines)
+
+    np.save(os.path.join(filename, 'cdpx.npy'), cdpx)
+    np.save(os.path.join(filename, 'cdpy.npy'), cdpy)
     
     inlines = np.unique(inlines)
     crosslines = np.unique(crosslines)
@@ -211,11 +221,11 @@ def compressed_zarr(segy_file, sort_order='inline'):
     with open(os.path.join(filename, 'binary_header.json'), 'r') as fp:
         binary_header = json.loads(fp.read())
 
-    inlines = np.load(os.path.join(filename, 'inlines.npy'))
-    inlines = np.unique(inlines)
+    cdpx = np.load(os.path.join(filename, 'cdpx.npy'))
+    cdpy = np.load(os.path.join(filename, 'cdpy.npy'))
 
+    inlines = np.load(os.path.join(filename, 'inlines.npy'))
     crosslines = np.load(os.path.join(filename, 'crosslines.npy'))
-    crosslines = np.unique(crosslines)
 
     if(sort_order == 'inline'):
         min_orth_line = crosslines.min()
@@ -246,6 +256,13 @@ def compressed_zarr(segy_file, sort_order='inline'):
                                                  int(crosslines.max())], 
                                  dtype=int, overwrite=True)
     
+    coords_root = root.create_group('coords', overwrite=True)
+
+    inline_coord = coords_root.create_dataset("inlines", data=inlines, dtype=int, overwrite=True)
+    crossline_coord = coords_root.create_dataset("crosslines", data=crosslines, dtype=int, overwrite=True)
+    cdpx_coord = coords_root.create_dataset("cdpx", data=cdpx, dtype=float, overwrite=True)
+    cdpy_coord = coords_root.create_dataset("cdpy", data=cdpy, dtype=float, overwrite=True)
+
     line_root = root.create_group(sort_order, overwrite=True)
     
     seismic = line_root.zeros("seismic",
