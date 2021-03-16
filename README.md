@@ -50,7 +50,7 @@ Access to data on S3 is provided by the rssFromS3 object.
 If the data resides on a bucket that support anonymous access to data, 
 then all you need to do is provide object uri (its path on s3).
 
-rss = rssFromS3(object_uri, cache_size=100*1024*2)
+rss = rssFromS3(object_uri, cache_size=100)
 
 Reads from a remote blob store are relatively expensive, so this object supports 
 a (LRU) least recently used cache. Speficy the max size of this cache in bytes as 
