@@ -1,10 +1,6 @@
-from itertools import chain
-from glob import glob
-import json
 import numpy as np
 import os
 import s3f3
-import tqdm
 import zarr
 
 
@@ -66,7 +62,18 @@ class rssFromFile():
         raise NotImplementedError()
 
 class rssFromS3():
-    def __init__(self, filename, client_kwargs, cache_size=256*(1024**2)):
+    def __init__(self, filename, client_kwargs=client_kwargs, cache_size=256*(1024**2)):
+        """
+        An object for accessing rss data from s3 blob storage.
+        
+        Parameters
+        ----------
+        filename : path to rss data object on s3.
+        client_kwargs : dict containing aws_access_key_id and aws_secret_access_key or None.
+                        If this variable is none, anonymous access is assumed.
+        cache_size : max size of the LRU cache.
+        """
+        
         s3 = s3fs.S3FileSystem(client_kwargs=client_kwargs)
         store = s3fs.S3Map(root=filename, s3=s3, check=False)
 
@@ -92,11 +99,39 @@ class rssFromS3():
         self.kdtree = KDTree(data=self.xy)
 
     def query_by_xy(self, xy, k=4):
+        """
+        Query k inline/crossline coordinates closest to this x/y coordinate. 
+        
+        Parameters
+        ----------
+        xy - An array containing the [easting, northing] coordinates.
+        k - The number of nearest points to look up.
+        
+        Returns
+        -------
+        dist - array, the euclidean distance from the point x/y to the nearest inline/xline grid coordinate.
+        ilxl - list, a list of inline/crossling coordinate nearest to the point x/y.
+        """
+        
         dist, index = self.kdtree.query(np.atleast_2d(xy), k=k)
         ilxl = [self.ilxl[i,:] for i in index]
         return dist, ilxl
         
     def line(self, line_number, sort_order='inline'):
+        """
+        Read a line from the rss data.
+        
+        Parameters
+        ----------
+        line_number : the line number to read.
+        sort_order : one of 'inline' or 'crossline' depending on your preference.
+        
+        Returns
+        -------
+        traces : 2-D float array containing the trace data for the specified line.
+        mask : 2-D boolean array, False value indicated data that has been added by padding.  
+        """
+        
         sort_order = sort_order.lower()
         if(sort_order not in ('inline', 'crossline')):
             raise RuntimeError(
