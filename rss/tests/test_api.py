@@ -45,36 +45,47 @@ C39 CDPX(M)   :BYTE 181-184  CDPY(M)   :BYTE 185-188 (MULTIPLIED BY 100)
 C40 INLINE    :BYTE 189-192  CROSSLINE :BYTE 193-196                            
 """
 
-binary_meta = {'sample_rate_ms': 4.0, 'ns': 1001, 'float_format': 1,
-               'units': 'meters', 'num_traces' : 227545, 'size_of_trace' : 4244}
+binary_meta = {
+    "sample_rate_ms": 4.0,
+    "ns": 1001,
+    "float_format": 1,
+    "units": "meters",
+    "num_traces": 227545,
+    "size_of_trace": 4244,
+}
+
 
 class TestAPI(unittest.TestCase):
     def setUp(self):
-        #self.segy_file = 'data/ENFIELD_2010_4D_FAR_ANGLE.sgy'
-        self.segy_file = 'data/ENFIELD_2010_4D_FULLSTACK.sgy'
-        
+        # self.segy_file = 'data/ENFIELD_2010_4D_FAR_ANGLE.sgy'
+        self.segy_file = "data/ENFIELD_2010_4D_FULLSTACK.sgy"
+
     def _test_ebcdic(self):
         from rss.api import parse_ebcdic
+
         # just print for QC
         result = parse_ebcdic(self.segy_file)
         self.assertEqual(test_header, result)
 
     def _test_parse_binary_header(self):
         from rss.api import parse_binary_header
+
         binary_header = parse_binary_header(self.segy_file)
         for key, val in binary_header.items():
             self.assertEqual(binary_meta[key], val)
-            
+
     def _test_read_trace_data(self):
         from time import time
         from rss.api import read_trace_data
+
         st = time()
         read_trace_data(self.segy_file, binary_meta, scalco=-100)
-        print ("Elapsed time : ", time() - st)
+        print("Elapsed time : ", time() - st)
 
     def test_compressed_zarr(self):
         from time import time
         from rss.api import compressed_zarr
+
         st = time()
         compressed_zarr(self.segy_file)
-        print ("Elapsed time : ", time() - st)
+        print("Elapsed time : ", time() - st)
