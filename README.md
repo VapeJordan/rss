@@ -69,12 +69,12 @@ rss = rssFromS3(object-uri, client_kwargs=client_kwargs)
 The ingestion script will need you to configure byte locations, typically you can read these
 from the ebcdic header in the file, options are:
 
---inline
---crossline
---cdpx
---cdpy
+--inline\
+--crossline\
+--cdpx\
+--cdpy\
 
-You can also force the "scalar to be applied to all coordinates" to a constant value. 
+You can also force the "scalar to be applied to all coordinates" to a constant value.\
 --override_scalco
 
 Finally, the layout is optimized for sort order, specify this as one of inline or crossline.
