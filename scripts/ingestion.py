@@ -66,5 +66,5 @@ if __name__ == "__main__":
 
     compressed_zarr(args.segy_file, sort_order=args.sort_order)
    
-    #path = os.path.splitext(os.path.basename(args.segy_file))[0]    
-    #shutil.rmtree(os.path.join(path, '{sort_order}s'))
+    path = os.path.splitext(os.path.basename(args.segy_file))[0]    
+    shutil.rmtree(os.path.join(path, '{sort_order}s'))
