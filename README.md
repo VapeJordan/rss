@@ -64,6 +64,30 @@ in a dictionary.
 client_kwargs = {'aws_access_key_id':'XYZ.....', 'aws_secret_access_key':'ABC.....'}\
 rss = rssFromS3(object-uri, client_kwargs=client_kwargs)
 
+## Usage - Access data from AWS S3
+
+The ingestion script will need you to configure byte locations, typically you can read these
+from the ebcdic header in the file, options are:
+
+--inline
+--crossline
+--cdpx
+--cdpy
+
+You can also force the "scalar to be applied to all coordinates" to a constant value. 
+--override_scalco
+
+Finally, the layout is optimized for sort order, specify this as one of inline or crossline.
+--sort_order='inline'
+
+python ingestion.py psdn11_TbsdmF_full_w_AGC_Nov11.segy --inline='5-8' --crossline='21-24' --override_scalco=100  --sort_order='inline'
+python ingestion.py psdn11_TbsdmF_full_w_AGC_Nov11.segy --inline='5-8' --crossline='21-24' --override_scalco=100  --sort_order='crossline'
+
+### Warning: Ingestion of large data can be time consuming, this volume takes 1 hour to complete ingestion.
+
+The output will be a directory named after the SEGY filename, in this example, it will be psdn11_TbsdmF_full_w_AGC_Nov11.
+This directory can be kept for access on a local disk or moved to an s3 bucket to support remote access that way.
+
 
 
 
