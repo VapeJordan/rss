@@ -35,7 +35,7 @@ def load_line(seismic, scalers, bounds, line_number, mask_val=np.nan, sort_order
     traces[mask] = mask_val
     return traces, mask
 
-class ZArrFromFile():
+class rssFromFile():
     def __init__(self, filename):
         store = zarr.DirectoryStore(f'{filename}')
         root = zarr.open(store, mode='r')
@@ -46,7 +46,7 @@ class ZArrFromFile():
     def query_by_xy(self, xy, k=4):
         raise NotImplementedError()
 
-class ZArrFromS3():
+class rssFromS3():
     def __init__(self, filename, client_kwargs, cache_size=256*(1024**2)):
         s3 = s3fs.S3FileSystem(client_kwargs=client_kwargs)
         store = s3fs.S3Map(root=filename, s3=s3, check=False)
