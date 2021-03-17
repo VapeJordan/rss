@@ -1,6 +1,6 @@
 import numpy as np
 import os
-import s3f3
+import s3fs
 import zarr
 
 
