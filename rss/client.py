@@ -108,7 +108,7 @@ class rssFromS3:
             [root["coords"]["cdpx"][:], root["coords"]["cdpy"][:]]
         ).T
 
-        self.kdtree = KDTree(data=self.xy)
+        self.kdtree = None
 
     def query_by_xy(self, xy, k=4):
         """
@@ -124,6 +124,13 @@ class rssFromS3:
         dist - array, the euclidean distance from the point x/y to the nearest inline/xline grid coordinate.
         ilxl - list, a list of inline/crossling coordinate nearest to the point x/y.
         """
+        if self.kdtree is None:
+            print(
+                "Assembling a tree to map il/xl to x/y. \n"
+                + "This could take a couple of minutes, \n"
+                + "But only happens one time."
+            )
+            self.kdtree = KDTree(data=self.xy)
 
         dist, index = self.kdtree.query(np.atleast_2d(xy), k=k)
         ilxl = [self.ilxl[i, :] for i in index]
