@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import s3fs
+from scipy.spatial import KDTree
 import zarr
 
 
@@ -70,7 +71,7 @@ class rssFromFile:
 
 class rssFromS3:
     def __init__(
-        self, filename, client_kwargs=None, cache_size=256 * (1024 ** 2)
+        self, filename, client_kwargs=None, cache_size=512 * (1024 ** 2)
     ):
         """
         An object for accessing rss data from s3 blob storage.
@@ -94,7 +95,6 @@ class rssFromS3:
         inline_root = zarr.open(cache, mode="r")
         self.inline_root = inline_root["inline"]
 
-        cache = zarr.LRUStoreCache(store, max_size=cache_size)
         crossline_root = zarr.open(cache, mode="r")
         self.crossline_root = crossline_root["crossline"]
 
