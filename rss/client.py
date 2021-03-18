@@ -1,8 +1,51 @@
+from IPython.display import clear_output
 import numpy as np
 import os
 import s3fs
 from scipy.spatial import KDTree
 import zarr
+
+
+def load_trace(seismic, scalers, bounds, inline, crossline):
+    """
+    Loads a trace from the input seismic array.
+
+    Parameters
+    ----------
+    seismic : array like object containing sort order.
+    scalers : array like object containing dynamic range of the line.
+    bounds : dict containing min/max values for the inline/crossline coords.
+    inline : int, the inline number to access.
+    crossline : int, the crossline number to access.
+
+    Returns
+    -------
+    trace : 1-D float array containing the trace data.
+    is_live : boolean, is this a live trace or one added by padding.
+    """
+
+    min_inline, min_crossline, max_inline, max_crossline = bounds
+
+    if inline < min_inline or inline > max_inline:
+        raise RuntimeError(
+            f"{inline} out of bounds [{min_inline}, {max_inline}]."
+        )
+
+    if crossline < min_crossline or crossline > max_crossline:
+        raise RuntimeError(
+            f"{crossline} out of bounds [{min_crossline}, {max_crossline}]."
+        )
+
+    trace = seismic[:, crossline - min_crossline, inline - min_inline]
+    mask = trace < 1
+    min_val, max_val = scalers[inline - min_inline, :]
+    trace -= 1
+    trace = trace.astype(float) * max_val / (65535 - 1)
+    trace += min_val
+
+    is_live = np.all(~mask)
+
+    return trace, mask
 
 
 def load_line(
@@ -24,7 +67,7 @@ def load_line(
     Returns
     -------
     traces : 2-D float array containing the trace data for the specified line.
-    mask : 2-D boolean array, False value indicated data that has been added by padding.
+    mask : 2-D boolean array, True value indicated data that has been added by padding.
     """
 
     sort_order = sort_order.lower()
@@ -51,7 +94,7 @@ def load_line(
     mask = traces < 1
     min_val, max_val = scalers[line_number - min_line, :]
     traces -= 1
-    traces = traces.astype(np.float32) * max_val / (65535 - 1)
+    traces = traces.astype(float) * max_val / (65535 - 1)
     traces += min_val
     traces[mask] = mask_val
     return traces, mask
@@ -83,20 +126,33 @@ class rssFromS3:
                         If this variable is none, anonymous access is assumed.
         cache_size : max size of the LRU cache.
         """
+        print("Establishing Connection, may take a minute ......")
+
         anon = client_kwargs is None
 
         s3 = s3fs.S3FileSystem(anon=anon, client_kwargs=client_kwargs)
+
+        clear_output()
+        print("Connected to S3.")
+
         store = s3fs.S3Map(root=filename, s3=s3, check=False)
 
         # don't cache meta-data read once
         root = zarr.open(store, mode="r")
 
+        clear_output()
+        print("Mounting line access.")
+
         cache = zarr.LRUStoreCache(store, max_size=cache_size)
+
         inline_root = zarr.open(cache, mode="r")
         self.inline_root = inline_root["inline"]
 
         crossline_root = zarr.open(cache, mode="r")
         self.crossline_root = crossline_root["crossline"]
+
+        clear_output()
+        print("Configuring meta-data.")
 
         self.bounds = root["bounds"]
 
@@ -109,6 +165,9 @@ class rssFromS3:
         ).T
 
         self.kdtree = None
+
+        clear_output()
+        print("Connection complete.")
 
     def query_by_xy(self, xy, k=4):
         """
@@ -167,3 +226,24 @@ class rssFromS3:
         return load_line(
             seismic, scalers, self.bounds, line_number, sort_order=sort_order
         )
+
+    def trace(self, inline, crossline):
+        """
+        Read a line from the rss data.
+
+        Parameters
+        ----------
+        inline : int, inline coordinate.
+        crossline : int, crossline coordinate.
+
+        Returns
+        -------
+        trace : array, the trace at the coordinates.
+        is_live : boolean, is this a live trace
+
+        """
+
+        seismic = self.inline_root["seismic"]
+        scalers = self.inline_root["scalers"]
+
+        return load_trace(seismic, scalers, self.bounds, inline, crossline)
