@@ -101,7 +101,7 @@ def load_line(
 
 
 class rssClient:
-    def __init__(self, store):
+    def __init__(self, store, cache_size=512 * (1024 ** 2)):
         """
         rss format data access.
 
@@ -252,11 +252,11 @@ class rssFromS3(rssClient):
 
         store = s3fs.S3Map(root=filename, s3=s3, check=False)
 
-        super().__init__(store)
+        super().__init__(store, cache_size=cache_size)
 
 
 class rssFromFile(rssClient):
-    def __init__(self, filename):
+    def __init__(self, filename, cache_size=512 * (1024 ** 2)):
         """
         An object for accessing rss data from s3 blob storage.
 
@@ -267,4 +267,4 @@ class rssFromFile(rssClient):
 
         store = zarr.DirectoryStore(f"{filename}")
         root = zarr.open(store, mode="r")
-        super().__init__(store)
+        super().__init__(store, cache_size=cache_size)
