@@ -11,10 +11,9 @@ import struct
 import tqdm
 import zarr
 
-# SEGY defaults
+# SEGY definitions
 headers_offset = 3600
 trace_header_size = 240
-# FIXME - only supports 32-bit trace data
 size_of_float = 4
 
 segy_units = {0: "unknown", 1: "meters", 2: "feet"}
@@ -37,11 +36,6 @@ byte_locations = {
     "cdpy": (185, 4, ">i"),
     "scalco": (71, 2, ">h"),
 }
-
-default_inline_byte = 189
-default_xline_byte = 193
-default_cdpx_byte = 181
-default_cdpy_byte = 185
 
 # default compression
 compressor = LZ4()
@@ -87,6 +81,44 @@ def parse_binary_header(segy_file):
     }
 
 
+def to_coord(x, scal):
+    if scal > 0:
+        return x * scal
+    else:
+        return x / abs(scal)
+
+
+def parse_header(trace_as_bytes, scalco):
+    hdr = trace_as_bytes[:trace_header_size]
+
+    hdr = {
+        key: struct.unpack(val[2], hdr[val[0] - 1 : val[0] - 1 + val[1]])[0]
+        for key, val in byte_locations.items()
+    }
+
+    if scalco is None:
+        scalco = hdr["scalco"]
+    # convert to scale
+    hdr["cdpx"] = to_coord(hdr["cdpx"], scalco)
+    hdr["cdpy"] = to_coord(hdr["cdpy"], scalco)
+
+    return hdr
+
+
+def parse_trace(trace_as_bytes, binary_format):
+    trace_data = trace_as_bytes[trace_header_size:]
+
+    if binary_format == 1:
+        trace_data = ibm2float32(np.frombuffer(trace_data, dtype=">u4"))
+    elif binary_format == 5:
+        trace_data = np.frombuffer(trace_data, dtype=">f")
+        trace_data = trace_data.byteswap()
+    else:
+        fmt = segy_format[float_format]
+        raise RuntimeError(f"binary format {fmt} not supported.")
+    return trace_data
+
+
 def read_trace_data(
     segy_file,
     binary_header,
@@ -116,43 +148,6 @@ def read_trace_data(
 
     trace_size = binary_header["size_of_trace"]
 
-    def to_coord(x, scal):
-        if scal > 0:
-            return x * scal
-        else:
-            return x / abs(scal)
-
-    def header_to_int(trace_as_bytes, scalco):
-        hdr = trace_as_bytes[:trace_header_size]
-
-        hdr = {
-            key: struct.unpack(val[2], hdr[val[0] - 1 : val[0] - 1 + val[1]])[
-                0
-            ]
-            for key, val in byte_locations.items()
-        }
-
-        if scalco is None:
-            scalco = hdr["scalco"]
-        # convert to scale
-        hdr["cdpx"] = to_coord(hdr["cdpx"], scalco)
-        hdr["cdpy"] = to_coord(hdr["cdpy"], scalco)
-
-        return hdr
-
-    def traces_to_float(trace_as_bytes, binary_format):
-        trace_data = trace_as_bytes[trace_header_size:]
-
-        if binary_format == 1:
-            trace_data = ibm2float32(np.frombuffer(trace_data, dtype=">u4"))
-        elif binary_format == 5:
-            trace_data = np.frombuffer(trace_data, dtype=">f")
-            trace_data = trace_data.byteswap()
-        else:
-            fmt = segy_format[float_format]
-            raise RuntimeError(f"binary format {fmt} not supported.")
-        return trace_data
-
     line_coords = defaultdict(list)
 
     inlines = np.zeros(binary_header["num_traces"], dtype=int)
@@ -166,8 +161,8 @@ def read_trace_data(
         for trac in tqdm.tqdm(range(0, binary_header["num_traces"])):
             raw_bytes = fp.read(binary_header["size_of_trace"])
 
-            hdr = header_to_int(raw_bytes, scalco)
-            trace = traces_to_float(raw_bytes, binary_header["float_format"])
+            hdr = parse_header(raw_bytes, scalco)
+            trace = parse_trace(raw_bytes, binary_header["float_format"])
 
             # Dumbest possible impl
             line_number = hdr[sort_order]
@@ -340,8 +335,11 @@ def compressed_zarr(segy_file, sort_order="inline"):
         traces -= min_val
 
         max_val = traces.max()
-        traces = (65535 - 1) * traces / max_val
+        if max_val != 0:
+            # could the entire line be zero?
+            traces = (65535 - 1) * traces / max_val
 
+        # zero isn't an invalid number
         traces += 1
 
         traces.shape = (-1, binary_header["ns"])

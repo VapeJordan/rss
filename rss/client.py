@@ -100,45 +100,20 @@ def load_line(
     return traces, mask
 
 
-class rssFromFile:
-    def __init__(self, filename):
-        store = zarr.DirectoryStore(f"{filename}")
-        root = zarr.open(store, mode="r")
-
-    def line(self, line_number, sort_order="inline"):
-        raise NotImplementedError()
-
-    def query_by_xy(self, xy, k=4):
-        raise NotImplementedError()
-
-
-class rssFromS3:
-    def __init__(
-        self, filename, client_kwargs=None, cache_size=512 * (1024 ** 2)
-    ):
+class rssClient:
+    def __init__(self, store):
         """
-        An object for accessing rss data from s3 blob storage.
+        rss format data access.
 
         Parameters
         ----------
-        filename : path to rss data object on s3.
-        client_kwargs : dict containing aws_access_key_id and aws_secret_access_key or None.
-                        If this variable is none, anonymous access is assumed.
-        cache_size : max size of the LRU cache.
+        store - Instance of s ZArr storage object,
+                see s3fs.S3Map for remote s3 storage, or zarr.DirectoryStore as common
+                types of store.
         """
-        print("Establishing Connection, may take a minute ......")
-
-        anon = client_kwargs is None
-
-        s3 = s3fs.S3FileSystem(anon=anon, client_kwargs=client_kwargs)
-
-        clear_output()
-        print("Connected to S3.")
-
-        store = s3fs.S3Map(root=filename, s3=s3, check=False)
 
         # don't cache meta-data read once
-        root = zarr.open(store, mode="r")
+        self.root = zarr.open(store, mode="r")
 
         clear_output()
         print("Mounting line access.")
@@ -154,14 +129,17 @@ class rssFromS3:
         clear_output()
         print("Configuring meta-data.")
 
-        self.bounds = root["bounds"]
+        self.bounds = self.root["bounds"]
 
         self.ilxl = np.vstack(
-            [root["coords"]["inlines"][:], root["coords"]["crosslines"][:]]
+            [
+                self.root["coords"]["inlines"][:],
+                self.root["coords"]["crosslines"][:],
+            ]
         ).T
 
         self.xy = np.vstack(
-            [root["coords"]["cdpx"][:], root["coords"]["cdpy"][:]]
+            [self.root["coords"]["cdpx"][:], self.root["coords"]["cdpy"][:]]
         ).T
 
         self.kdtree = None
@@ -183,6 +161,7 @@ class rssFromS3:
         dist - array, the euclidean distance from the point x/y to the nearest inline/xline grid coordinate.
         ilxl - list, a list of inline/crossling coordinate nearest to the point x/y.
         """
+
         if self.kdtree is None:
             print(
                 "Assembling a tree to map il/xl to x/y. \n"
@@ -240,10 +219,52 @@ class rssFromS3:
         -------
         trace : array, the trace at the coordinates.
         is_live : boolean, is this a live trace
-
         """
 
         seismic = self.inline_root["seismic"]
         scalers = self.inline_root["scalers"]
 
         return load_trace(seismic, scalers, self.bounds, inline, crossline)
+
+
+class rssFromS3(rssClient):
+    def __init__(
+        self, filename, client_kwargs=None, cache_size=512 * (1024 ** 2)
+    ):
+        """
+        An object for accessing rss data from s3 blob storage.
+
+        Parameters
+        ----------
+        filename : path to rss data object on s3.
+        client_kwargs : dict containing aws_access_key_id and aws_secret_access_key or None.
+        If this variable is none, anonymous access is assumed.
+        cache_size : max size of the LRU cache.
+        """
+        print("Establishing Connection, may take a minute ......")
+
+        anon = client_kwargs is None
+
+        s3 = s3fs.S3FileSystem(anon=anon, client_kwargs=client_kwargs)
+
+        clear_output()
+        print("Connected to S3.")
+
+        store = s3fs.S3Map(root=filename, s3=s3, check=False)
+
+        super().__init__(store)
+
+
+class rssFromFile(rssClient):
+    def __init__(self, filename):
+        """
+        An object for accessing rss data from s3 blob storage.
+
+        Parameters
+        ----------
+        filename : path to rss data object on disk.
+        """
+
+        store = zarr.DirectoryStore(f"{filename}")
+        root = zarr.open(store, mode="r")
+        super().__init__(store)
