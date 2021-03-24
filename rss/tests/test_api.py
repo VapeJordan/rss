@@ -1,4 +1,5 @@
 import os
+import shutil
 import unittest
 
 from rss import api
@@ -50,42 +51,157 @@ binary_meta = {
     "ns": 1001,
     "float_format": 1,
     "units": "meters",
-    "num_traces": 227545,
+    "num_traces": 1,
     "size_of_trace": 4244,
 }
 
 
 class TestAPI(unittest.TestCase):
     def setUp(self):
-        # self.segy_file = 'data/ENFIELD_2010_4D_FAR_ANGLE.sgy'
-        self.segy_file = "data/ENFIELD_2010_4D_FULLSTACK.sgy"
+        self.segy_file = "data/enfield_test_data.sgy"
+        self.ieee_data = "data/psdn_test_data.segy"
 
-    def _test_ebcdic(self):
+    def test_ebcdic(self):
         from rss.api import parse_ebcdic
 
         # just print for QC
         result = parse_ebcdic(self.segy_file)
         self.assertEqual(test_header, result)
 
-    def _test_parse_binary_header(self):
+    def test_parse_binary_header(self):
         from rss.api import parse_binary_header
 
         binary_header = parse_binary_header(self.segy_file)
         for key, val in binary_header.items():
             self.assertEqual(binary_meta[key], val)
 
-    def _test_read_trace_data(self):
-        from time import time
+    def test_read_trace_data_ieee(self):
+        import numpy as np
         from rss.api import read_trace_data
 
-        st = time()
+        binary_meta = {
+            "sample_rate_ms": 1.0,
+            "ns": 1501,
+            "float_format": 5,
+            "units": "meters",
+            "num_traces": 120,
+            "size_of_trace": 240 + 4 * 1501,
+        }
+
+        read_size = binary_meta["size_of_trace"] * binary_meta["num_traces"]
+        with open(self.ieee_data, "rb") as fp:
+            fp.seek(3600)
+            traces = np.frombuffer(fp.read(read_size), ">f")
+
+        traces.shape = (120, -1)
+        traces = traces[:, 60:]
+
+        read_trace_data(self.ieee_data, binary_meta)
+
+        output_file = os.path.join(
+            os.path.splitext(os.path.basename(self.ieee_data))[0],
+            "inlines",
+            "983",
+            "traces.bin",
+        )
+
+        with open(output_file, "rb") as fp:
+            test_traces = np.frombuffer(fp.read(1501 * 4 * 120), "<f")
+        test_traces.shape = (120, -1)
+
+        try:
+            np.testing.assert_array_equal(traces, test_traces)
+            shutil.rmtree(
+                os.path.splitext(os.path.basename(self.ieee_data))[0]
+            )
+        except:
+            shutil.rmtree(
+                os.path.splitext(os.path.basename(self.ieee_data))[0]
+            )
+            raise
+
+    def test_read_trace_data_ibm(self):
+        from ibm2ieee import ibm2float32
+        import numpy as np
+
+        from rss.api import read_trace_data
+
+        with open(self.segy_file, "rb") as fp:
+            fp.seek(3600 + 240)
+            trace = ibm2float32(np.frombuffer(fp.read(1001 * 4), dtype=">u4"))
+
         read_trace_data(self.segy_file, binary_meta, scalco=-100)
-        print("Elapsed time : ", time() - st)
+
+        output_file = os.path.join(
+            os.path.splitext(os.path.basename(self.segy_file))[0],
+            "inlines",
+            "1253",
+            "traces.bin",
+        )
+
+        with open(output_file, "rb") as fp:
+            test_trace = np.frombuffer(fp.read(1001 * 4), "<f")
+
+        np.testing.assert_array_equal(trace, test_trace)
+
+        try:
+            np.testing.assert_array_equal(trace, test_trace)
+            shutil.rmtree(
+                os.path.splitext(os.path.basename(self.segy_file))[0]
+            )
+        except:
+            shutil.rmtree(
+                os.path.splitext(os.path.basename(self.segy_file))[0]
+            )
+            raise
 
     def test_compressed_zarr(self):
-        from time import time
-        from rss.api import compressed_zarr
+        from ibm2ieee import ibm2float32
+        import numpy as np
+        from rss.api import compressed_zarr, read_trace_data
+        from rss.client import rssFromFile
 
-        st = time()
-        compressed_zarr(self.segy_file)
-        print("Elapsed time : ", time() - st)
+        binary_meta = {
+            "sample_rate_ms": 1.0,
+            "ns": 1501,
+            "float_format": 5,
+            "units": "meters",
+            "num_traces": 120,
+            "size_of_trace": 240 + 4 * 1501,
+        }
+
+        read_trace_data(self.ieee_data, binary_meta, sort_order="inline")
+        read_trace_data(self.ieee_data, binary_meta, sort_order="crossline")
+
+        compressed_zarr(self.ieee_data, sort_order="inline")
+        compressed_zarr(self.ieee_data, sort_order="crossline")
+
+        # test the client too
+        rss = rssFromFile("psdn_test_data")
+
+        traces, _ = rss.line(983, sort_order="inline")
+
+        np.testing.assert_array_equal(traces.shape, (1501, 120))
+        # crossline will be the same because we only have one trace
+
+        with open(self.ieee_data, "rb") as fp:
+            fp.seek(3600)
+            read_size = (
+                binary_meta["size_of_trace"] * binary_meta["num_traces"]
+            )
+            test_traces = np.frombuffer(fp.read(read_size), dtype=">f4")
+
+        test_traces.shape = (120, -1)
+        test_traces = test_traces[:, 60:].T
+
+        # test ranges:
+        np.testing.assert_allclose(traces.max(), test_traces.max(), rtol=1e-4)
+
+        np.testing.assert_allclose(traces.min(), test_traces.min(), rtol=1e-4)
+
+        # the largest relative error is where the amplitude is smallest
+        dynamic_range = test_traces.max() - test_traces.min()
+        delta = np.abs((traces - test_traces) / dynamic_range)
+        self.assertTrue(delta.max() < 1e-4)
+
+        shutil.rmtree(os.path.splitext(os.path.basename(self.ieee_data))[0])
