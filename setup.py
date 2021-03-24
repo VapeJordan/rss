@@ -6,15 +6,14 @@ here = path.abspath(path.dirname(__file__))
 
 
 setup(
-    name="rss",
+    name="real-simple-seismic",
     version="0.0.1",  # Required
-    description="real simple segy",
+    description="real simple seismic",
     classifiers=[
         "Development Status :: 3 - Alpha",
-        "Intended Audience :: Intended Audience :: Science/Research",
-        "License :: OSI Approved ::  BSD-3-Clause License",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
     ],
     packages=find_packages(exclude=["contrib",
                                     "docs",
@@ -22,7 +21,7 @@ setup(
     python_requires=">=3.6",
 
     # This is for getting through appveyor, install tensorflow_gpu if you can.
-    install_requires=["numpy==1.19.5", "ebcdic", "ibm2ieee", "tqdm",
+    install_requires=["numpy==1.19.1", "ebcdic", "ibm2ieee", "tqdm",
                       "notebook", 'matplotlib==3.3.3', 'numcodecs', 's3fs==0.5.1',
                       "scipy==1.5.4",
                       "zarr", 'aiohttp==3.7.2'],  
