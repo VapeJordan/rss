@@ -7,7 +7,7 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
     name="real-simple-seismic",
-    version="0.0.1",  # Required
+    version="0.0.2",  # Required
     description="real simple seismic",
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -21,10 +21,14 @@ setup(
     python_requires=">=3.6",
 
     # This is for getting through appveyor, install tensorflow_gpu if you can.
-    install_requires=["numpy==1.19.1", "ebcdic", "ibm2ieee", "tqdm",
-                      "notebook", 'matplotlib==3.3.3', 'numcodecs', 's3fs==0.5.1',
-                      "scipy==1.5.4",
-                      "zarr", 'aiohttp==3.7.2'],  
+    install_requires=["numpy", 
+                      "ebcdic", 
+                      "ibm2ieee", 
+                      "tqdm",
+                      'numcodecs', 
+                      's3fs',
+                      "scipy",
+                      "zarr"],  
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
     # syntax, for example:
