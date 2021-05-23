@@ -200,10 +200,10 @@ def read_trace_data(
 
     if sort_order == "inline":
         min_orth_line = min_crossline
-        num_orth_lines = num_crosslines
+        num_orth_lines = max_crossline - min_crossline + 1
     else:
         min_orth_line = min_inline
-        num_orth_lines = num_inlines
+        num_orth_lines = max_inline - min_inline + 1
 
     # seems backwards, but the "crosslines" are in the "inline" image
     # i.e. the inline number is constant and vice versa:
