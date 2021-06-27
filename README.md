@@ -29,7 +29,7 @@ You're not generally going to see anything much in the data, there's only 111 mi
 in all of the 71,880 recordings. The client has a list of ariellellouch's events (time and dataset id), 
 you might use these to get started:
 ```
-it, iset = client.sample_events[8,:]
+it, iset = client.sample_events[34,:]
 ```
 
 The FORGE DAS data has been indexed by its order in the "get_all_silixa.sh" script 
@@ -48,6 +48,9 @@ plot(data, time=client.time_seconds, depth=client.depth,
                 title=client.segy_filenames[iset],
                     cmap='gray', figsize=(20,20))
 ```
+
+![GitHub Logo](/data/FORGE-Example-Event.png)
+
 
 ## Poststack Seismic Data
 
