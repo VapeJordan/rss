@@ -50,7 +50,6 @@ plot(data, time=client.time_seconds, depth=client.depth,
 ```
 
 
-
 ## Poststack Seismic Data
 
 rss is a real simple way to ingest and access stacked 3d seismic data. Once ingested, 
