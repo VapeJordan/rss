@@ -75,6 +75,49 @@ class TestAPI(unittest.TestCase):
         for key, val in binary_header.items():
             self.assertEqual(binary_meta[key], val)
 
+    def test_read_trace_data_unstructured(self):    
+        from ibm2ieee import ibm2float32
+        import numpy as np
+        import os
+
+        from rss.api import read_trace_data_unstructured
+        
+        binary_meta = {
+            "sample_rate_ms": 1.0,
+            "ns": 1501,
+            "float_format": 5,
+            "units": "meters",
+            "num_traces": 120,
+            "size_of_trace": 240 + 4 * 1501,
+        }
+        ieee_data = "../data/psdn_test_data.segy"
+
+        read_trace_data_unstructured(self.ieee_data, binary_meta)
+
+        output_file = os.path.join(os.path.splitext(
+            os.path.basename(self.ieee_data))[0], "inline.npy")
+        inlines = np.load(output_file)
+
+        assert(inlines[0] == 983)
+
+        read_size = binary_meta["size_of_trace"] * binary_meta["num_traces"]
+        with open(self.ieee_data, "rb") as fp:
+            fp.seek(3600)
+            traces = np.frombuffer(fp.read(read_size), dtype=">f")
+        traces.shape = (120, -1)
+        traces = traces[:, 60:]
+
+        output_file = os.path.join(
+            os.path.splitext(os.path.basename(self.ieee_data))[0],
+            "data",
+            "traces.bin")
+
+        with open(output_file, "rb") as fp:
+            test_traces = np.frombuffer(fp.read(1501 * 4 * 120), "<f")
+        test_traces.shape = (120, -1)
+
+        np.testing.assert_array_equal(traces, test_traces)            
+            
     def test_read_trace_data_ieee(self):
         import numpy as np
         from rss.api import read_trace_data
@@ -155,6 +198,7 @@ class TestAPI(unittest.TestCase):
             )
             raise
 
+  
     def test_compressed_zarr(self):
         from ibm2ieee import ibm2float32
         import numpy as np

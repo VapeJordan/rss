@@ -36,6 +36,7 @@ byte_locations = {
     "cdpy": (185, 4, ">i"),
     "scalco": (71, 2, ">h"),
 }
+apply_spatial_scalar_to = ["cdpx", "cdpy"]
 
 # default compression
 compressor = LZ4()
@@ -88,31 +89,40 @@ def to_coord(x, scal):
         return x / abs(scal)
 
 
-def parse_header(trace_as_bytes, scalco):
+def parse_header(trace_as_bytes, 
+                 scalco=None, 
+                 byte_locations=byte_locations,
+                 apply_spatial_scalar_to=apply_spatial_scalar_to):
     hdr = trace_as_bytes[:trace_header_size]
 
+    if "scalco" not in byte_locations.keys():
+        byte_locations["scalco"] = (71, 2, ">h")
+    
     hdr = {
         key: struct.unpack(val[2], hdr[val[0] - 1 : val[0] - 1 + val[1]])[0]
         for key, val in byte_locations.items()
     }
 
+    # sometimes you have to override this:
     if scalco is None:
         scalco = hdr["scalco"]
-    # convert to scale
-    hdr["cdpx"] = to_coord(hdr["cdpx"], scalco)
-    hdr["cdpy"] = to_coord(hdr["cdpy"], scalco)
-
+        
+    for key in apply_spatial_scalar_to:
+        if key in hdr.keys():
+            hdr[key] = to_coord(hdr[key], scalco)
+            
     return hdr
 
 
-def parse_trace(trace_as_bytes, binary_format):
+def parse_trace(trace_as_bytes, binary_format, override_byteswap=False):
     trace_data = trace_as_bytes[trace_header_size:]
 
     if binary_format == 1:
         trace_data = ibm2float32(np.frombuffer(trace_data, dtype=">u4"))
     elif binary_format == 5:
         trace_data = np.frombuffer(trace_data, dtype=">f")
-        trace_data = trace_data.byteswap()
+        if not override_byteswap:
+            trace_data = trace_data.byteswap()
     else:
         fmt = segy_format[float_format]
         raise RuntimeError(f"binary format {fmt} not supported.")
@@ -123,6 +133,7 @@ def read_trace_data(
     segy_file,
     binary_header,
     byte_locations=byte_locations,
+    apply_spatial_scalar_to=apply_spatial_scalar_to,
     scalco=None,
     sort_order="inline",
 ):
@@ -161,7 +172,11 @@ def read_trace_data(
         for trac in tqdm.tqdm(range(0, binary_header["num_traces"])):
             raw_bytes = fp.read(binary_header["size_of_trace"])
 
-            hdr = parse_header(raw_bytes, scalco)
+            hdr = parse_header(raw_bytes, 
+                               scalco, 
+                               byte_locations=byte_locations,
+                               apply_spatial_scalar_to=apply_spatial_scalar_to)
+            
             trace = parse_trace(raw_bytes, binary_header["float_format"])
 
             # Dumbest possible impl
@@ -217,6 +232,49 @@ def read_trace_data(
         )
         with open(output_file, "ba") as gp:
             valid_crosslines.tofile(gp)
+
+def read_trace_data_unstructured(segy_file, binary_header, 
+    byte_locations=byte_locations, override_byteswap=False):
+    """ Read all the data in the file but dont assume structure."""
+
+    filename = os.path.splitext(os.path.basename(segy_file))[0]
+
+    folder = f"{filename}"
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+
+    with open(os.path.join(filename, "binary_header.json"), "w") as fp:
+        fp.write(json.dumps(binary_header))
+
+    trace_size = binary_header["size_of_trace"]
+
+    header_values = {key : np.zeros(binary_header["num_traces"], dtype=int) for 
+                        key in byte_locations.keys()}
+
+    with open(segy_file, "rb") as fp:
+        fp.seek(3600)
+        for trac in tqdm.tqdm(range(0, binary_header["num_traces"])):
+            raw_bytes = fp.read(binary_header["size_of_trace"])
+
+            hdr = parse_header(raw_bytes, 
+                               byte_locations=byte_locations, 
+                               apply_spatial_scalar_to=[])
+
+            trace = parse_trace(raw_bytes, binary_header["float_format"], 
+                                    override_byteswap=override_byteswap)
+            # Dumbest possible impl
+            folder = os.path.join(filename, "data")
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+
+            with open(os.path.join(folder, "traces.bin"), "ba") as gp:
+                trace.tofile(gp)
+
+            for key in header_values.keys():
+                header_values[key][trac] = hdr[key]
+
+    for key in header_values.keys():
+        np.save(os.path.join(filename, f"{key}.npy"), header_values[key])
 
 
 def compressed_zarr(segy_file, sort_order="inline"):
