@@ -2,6 +2,57 @@
 
 Forget about SEGY - watch your seismic like frames in a movie.
 
+## (Update) FORGE Geothermal DAS 
+
+rss adds access to the Utah FORGE: High-Resolution DAS Microseismic Data from Well 78-32.
+FORGE Geothermal DAS dataset, provide by the [Geothermal Data Repository](https://gdr.openei.org/submissions/1185) 
+and used under a CC-BY 4.0 license.
+
+"DAS" is a recording of seismicity made with fibre optic cable which is permanently cemented 
+in monitoring well 78-32, which is a vertical well, 3274.78 feet deep. 
+
+This DAS data consists of 71,880 (segy) DAS recordings. Of these large data, 111 recordings
+the location of which has been kindly provided by [ariellellouch](https://github.com/ariellellouch/FORGE/blob/master/DAS_Microseis_Catalog).
+
+Why should you care? Because geothermal is so hot right now. Certainly there's applications for 
+automated microseismic event detection in carbon capture.
+
+
+### Example Usage:
+
+Use the client to establish a connection with the dataset:
+```
+client = rssFORGEFromS3('[email Vape for Access]')
+```
+
+You're not generally going to see anything much in the data, there's only 111 microseismic events 
+in all of the 71,880 recordings. The client has a list of ariellellouch's events (time and dataset id), 
+you might use these to get started:
+```
+it, iset = client.sample_events[8,:]
+```
+
+The FORGE DAS data has been indexed by its order in the "get_all_silixa.sh" script 
+that is provided to access to segy. It's possible that not all the data is loaded, 
+check the mask array, where it's "True" the data is missing:
+```
+data, mask = client.line(iset)
+```
+
+There's a plot and process (not a good one) functions to help see the events, they maybe had to
+see through the noise otherwise:
+```
+from rss.forge_client import plot, process, rssFORGEFromS3
+plot(data, time=client.time_seconds, depth=client.depth, 
+            crop=(250, 1100, it-1000, it+1500), 
+                title=client.segy_filenames[iset],
+                    cmap='gray', figsize=(20,20))
+```
+
+
+
+## Poststack Seismic Data
+
 rss is a real simple way to ingest and access stacked 3d seismic data. Once ingested, 
 the seismic data is access slices, inlines, crosslines, time slices (todo) or in 
 3D chunks (todo). 
