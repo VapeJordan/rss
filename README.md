@@ -8,8 +8,10 @@ rss adds access to the Utah FORGE: High-Resolution DAS Microseismic Data from We
 FORGE Geothermal DAS dataset, provide by the [Geothermal Data Repository](https://gdr.openei.org/submissions/1185) 
 and used under a CC-BY 4.0 license.
 
-"DAS" is a recording of seismicity made with fibre optic cable which is permanently cemented 
-in monitoring well 78-32, which is a vertical well, 3274.78 feet deep. 
+"DAS" is a recording of seismicity, which in this case is made with fibre optic cable which is permanently cemented 
+in a FORGE monitoring well 78-32, which is a vertical well, 3274.78 feet deep. Having sensors located "downhole" 
+means that the system is expected to be highly sensitive to microseismicity resulting from the enhanced geothermal
+stimulation.
 
 This DAS data consists of 71,880 (segy) DAS recordings. Of these large data, 111 recordings
 the location of which has been kindly provided by [ariellellouch](https://github.com/ariellellouch/FORGE/blob/master/DAS_Microseis_Catalog).
