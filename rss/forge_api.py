@@ -25,8 +25,11 @@ def get_forge_root_s3(zarr_file):
 
 def make_forge_zarr(root, **config):
     num_traces, ns, num_lines = config['num_traces'], config['ns'], config['num_lines']
-    das = root.zeros("seismic", shape=(num_lines, num_traces, ns), 
-                chunks=(1, ns), dtype=np.uint16, overwrite=True, compressor=compressor)
+    
+    das = root.zeros("seismic", shape=(num_traces, ns, num_lines), 
+                        chunks=(num_traces, ns, 1), dtype=np.uint16, 
+                            overwrite=True, compressor=compressor)
+    
     scalers = root.zeros("scalers", shape=(num_lines, 2), dtype=np.float32, overwrite=True)
     commands = root.zeros("get_all_silixia", shape=(num_lines,), dtype='S108', overwrite=True)
     filenames = root.zeros("segy_filenames", shape=(num_lines,), dtype='S108', overwrite=True)
