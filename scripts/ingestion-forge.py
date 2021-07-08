@@ -83,8 +83,12 @@ def ingest_line(das, iline, line):
     traces, scalers = to_uint16(data)
     for key,val in headers.items():
         das.create_dataset(key, data=val, overwrite=True)
-    das["seismic"][iline,...] = traces
-    das["scalers"][iline,...] = scalers
+
+    assert(traces.shape[0] == config['num_traces'])
+    assert(traces.shape[1] == config['ns'])
+
+    das["seismic"][..., iline] = traces
+    das["scalers"][iline, :] = scalers
 
     
 def log_success(line):
@@ -121,6 +125,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.init_zarr:
+        print ("Initializing ZArr.")
         # the FORGE data is way too big to ingest locally:        
         s3 = s3fs.S3FileSystem()
         store = s3fs.S3Map(root=args.zarr_out, s3=s3, check=False)
@@ -163,8 +168,4 @@ if __name__ == "__main__":
             cleanup(lines[il])
             log_success(lines[il])
         except:
-            log_error(lines[il])    
-    
-    
-    
-    
+            log_error(lines[il])

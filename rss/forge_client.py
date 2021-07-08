@@ -39,8 +39,8 @@ def from_uint16(traces, scalers):
 
 
 def load_das(das, iline):
-    traces = das['seismic'][iline, ...]
-    scalers = das['scalers'][iline, ...]
+    traces = das['seismic'][..., iline]
+    scalers = das['scalers'][iline, :]
     return from_uint16(traces, scalers)
 
 
@@ -108,11 +108,11 @@ def process(inp):
     return outp
 
 class rssFORGEClient:
-    def __init__(self, store, cache_size=5 * 128 * (1024 ** 2)):
+    def __init__(self, store, cache_size=128 * (1024 ** 2)):
         # don't cache meta-data read once
-        cache = zarr.LRUStoreCache(store, max_size=cache_size)
+        self.cache = zarr.LRUStoreCache(store, max_size=cache_size)
 
-        self.root = zarr.open(cache, mode="r")
+        self.root = zarr.open(self.cache, mode="r")
 
         meta_data, recmd, time_seconds = load_meta(self.root)
         
@@ -149,7 +149,7 @@ class rssFORGEClient:
         
 class rssFORGEFromS3(rssFORGEClient):
     def __init__(
-        self, filename, client_kwargs=None, cache_size=5 * 128 * (1024 ** 2)
+        self, filename, client_kwargs=None, cache_size=128 * (1024 ** 2)
     ):
         """
         An object for accessing rss data from s3 blob storage.
