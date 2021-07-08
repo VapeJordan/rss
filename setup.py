@@ -18,7 +18,7 @@ setup(
     packages=find_packages(exclude=["contrib",
                                     "docs",
                                     "tests"]),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
 
     # This is for getting through appveyor, install tensorflow_gpu if you can.
     install_requires=["numpy", 
